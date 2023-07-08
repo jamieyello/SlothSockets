@@ -20,4 +20,4 @@ SlothSockets recognizes several serialization attributes as well as a custom one
 
 `[SlothSerialize(mode)]`: Specify whether to use serialize fields or properties. Can be combined with |. By default, a class will be serialized with its fields. This is to match Unity's serialization behavior, where this library is most likely to be used. In a .NET project you might want to serialize properties by default. I know, I don't make the rules.
 
-`[System.Serializable]`, `[System.NotSerialized]`: Add to fields/properties to specify whether they are serialized or not. This overrides the previous attribute.
+`[Newtonsoft.Json.JsonIgnore]` / `[System.Text.Json.Serialization.JsonIgnore]`: Ignore member for serialization.
