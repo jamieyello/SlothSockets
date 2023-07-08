@@ -15,7 +15,7 @@ namespace SlothSockets.Internal
         internal List<ulong> Bits { get; set; } = new() { 0 };
         internal byte XPos { get; set; } = 0;
         /// <summary> Total size in bits. </summary>
-        public long TotalLength => (Bits.Count - 1) * 64 * XPos;
+        public long TotalLength => (Bits.Count - 1) * 64 + XPos;
 
         public void WriteDebug() {
             foreach (var ul in Bits) Console.WriteLine(Convert.ToString((long)ul, 2).PadLeft(64, '0'));
