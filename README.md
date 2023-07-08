@@ -18,6 +18,6 @@ The object that will contain all mail to be sent. This can be sent to one recipi
 
 SlothSockets recognizes several serialization attributes as well as a custom one.
 
-`[SlothSerialize(mode)]`: Specify whether to serialize fields or properties on a class/struct. This overrides the mode specified when serializing. Can be combined with |.
+`[SlothSerialize(mode)]`: Specify whether to serialize fields or properties on a class/struct. This overrides the mode specified when serializing. Can be combined with `|`.
 
-`[Newtonsoft.Json.JsonIgnore]`, `[System.Text.Json.Serialization.JsonIgnore]`, `[System.NonSerialized]`: Ignore member for serialization.
+`[Newtonsoft.Json.JsonIgnore]`, `[System.Text.Json.Serialization.JsonIgnore]`, `[System.NonSerialized]`: Do not serialize member.
