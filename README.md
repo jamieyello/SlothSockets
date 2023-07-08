@@ -18,6 +18,6 @@ The object that will contain all mail to be sent. This can be sent to one recipi
 
 SlothSockets recognizes several serialization attributes as well as a custom one.
 
-`[SlothSerialize(mode)]`: Specify whether to use serialize fields or properties. Can be combined with |. By default, a class will be serialized with its fields. This is to match Unity's serialization behavior, where this library is most likely to be used. In a .NET project you might want to serialize properties by default. I know, I don't make the rules.
+`[SlothSerialize(mode)]`: Specify whether to serialize fields or properties on a class/struct. This overrides the mode specified when serializing. Can be combined with |.
 
-`[Newtonsoft.Json.JsonIgnore]` / `[System.Text.Json.Serialization.JsonIgnore]`: Ignore member for serialization.
+`[Newtonsoft.Json.JsonIgnore]`, `[System.Text.Json.Serialization.JsonIgnore]`, `[System.NonSerialized]`: Ignore member for serialization.
