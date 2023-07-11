@@ -10,10 +10,10 @@ using System.Threading.Tasks;
 [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Struct)]
 public class SlothSerializeAttribute : System.Attribute
 {
-    public readonly SerializeMode mode;
+    public readonly SerializeMode Mode;
 
     public SlothSerializeAttribute(SerializeMode mode = SerializeMode.Fields)
     {
-        this.mode = mode;
+        Mode = mode;
     }
 }

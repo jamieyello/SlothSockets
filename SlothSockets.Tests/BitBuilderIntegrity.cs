@@ -1,4 +1,5 @@
-﻿using SlothSockets.Internal;
+﻿using Newtonsoft.Json.Linq;
+using SlothSockets.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 namespace SlothSockets.Tests
 {
     [TestClass]
-    public class Integrity
+    public class BitBuilderIntegrity
     {
         [TestMethod]
         public void IntegrityTestRand()
@@ -51,6 +52,12 @@ namespace SlothSockets.Tests
             reader.ReadBool();
             var s = reader.ReadString();
             Assert.AreEqual(message, s);
+        }
+
+        [TestMethod]
+        public void CastTest()
+        {
+
         }
     }
 }

@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,11 +19,59 @@ namespace SlothSockets.Internal
         /// <summary> Total size in bits. </summary>
         public long TotalLength => (Bits.Count - 1) * 64 + XPos;
 
+        static readonly HashSet<Type> base_types = new() {
+            typeof(bool),
+            typeof(sbyte),
+            typeof(byte),
+            typeof(ushort),
+            typeof(short),
+            typeof(char),
+            typeof(decimal),
+            typeof(uint),
+            typeof(int),
+            typeof(ulong),
+            typeof(long),
+            typeof(DateTime),
+            typeof(TimeSpan),
+            typeof(string),
+            typeof(ObjectSerialationFlags),
+        };
+
+        internal static bool IsBaseSupportedType(Type type) => base_types.Contains(type);
+
         public void WriteDebug() {
             foreach (var ul in Bits) Console.WriteLine(Convert.ToString((long)ul, 2).PadLeft(64, '0'));
         }
 
         public BitBuilderReader GetReader() => new(this);
+
+        static MethodInfo[] GetPublicAppendMethods()
+        {
+            List<MethodInfo> result = new();
+
+            var append_methods = typeof(BitBuilder).GetMethods(BindingFlags.Public)
+                .Where(method => method.Name == "Append");
+
+            foreach (var append_method in append_methods)
+            {
+                var parameters = append_method.GetParameters();
+                if (parameters.Length != 1) continue;
+            }
+
+            throw new NotImplementedException();
+        }
+        static internal Dictionary<Type, FastMethodInfo> cache_AppendPrimative = new();
+        internal void AppendBaseTypeObject(object obj)
+        {
+            if (cache_AppendPrimative.TryGetValue(obj.GetType(), out var method)) method.Invoke(this, obj);
+            MethodInfo target = GetPublicAppendMethods()
+                .Where(method => method.GetParameters()[0].ParameterType == obj.GetType())
+                .FirstOrDefault() ?? throw new Exception("Object is not a base supported type.");
+
+            var fast_method = new FastMethodInfo(target);
+            cache_AppendPrimative.Add(obj.GetType(), fast_method);
+            fast_method.Invoke(this, obj);
+        }
 
         public void Append(bool value)  {
             if (XPos == 64) {
@@ -45,58 +95,62 @@ namespace SlothSockets.Internal
         public void Append(ulong value) => Append((ulong)value, 64);
         public void Append(long value) => Append((ulong)value, 64);
 
+        public void Append(DateTime value) {
+            Append((ulong)value.Ticks, 64);
+            Append((ulong)value.Kind, 32);
+        }
+        public void Append(TimeSpan value) => Append((ulong)value.Ticks, 64);
+
+        public void Append(decimal value) => Append(decimal.GetBits(value));
+
         public void Append(string value) {
             Append(value.Length);
             for (int i = 0; i < value.Length; i++) Append(value[i]);
         }
 
-        public void Append(bool[] value) {
-            var span = new ReadOnlySpan<bool>(value);
-            for (int i = 0; i < value.Length; i++) Append(span[i]);
+        internal void Append(ObjectSerialationFlags object_flags)
+        {
+            Append(object_flags.IsNull);
         }
 
-        public void Append(sbyte[] value) {
-            var span = new ReadOnlySpan<sbyte>(value);
-            for (int i = 0; i < value.Length; i++) Append((ulong)span[i], 8); 
-        }
-        public void Append(byte[] value) {
-            var span = new ReadOnlySpan<byte>(value);
-            for (int i = 0; i < value.Length; i++) Append((ulong)span[i], 8);
+        internal void Append(object obj, SerializeMode mode = SerializeMode.Properties) => BitBuilderSerializer.Serialize(obj, this, mode);
+
+        public void Append(IList<bool> value) {
+            for (int i = 0; i < value.Count; i++) Append(value[i]);
         }
 
-        public void Append(ushort[] value) {
-            var span = new ReadOnlySpan<ushort>(value);
-            for (int i = 0; i < value.Length; i++) Append((ulong)span[i], 16);
+        public void Append(IList<sbyte> value) {
+            for (int i = 0; i < value.Count; i++) Append((ulong)value[i], 8); 
         }
-        public void Append(short[] value) {
-            var span = new ReadOnlySpan<short>(value);
-            for (int i = 0; i < value.Length; i++) Append((ulong)span[i], 16);
-        }
-        public void Append(char[] value) {
-            var span = new ReadOnlySpan<char>(value);
-            for (int i = 0; i < value.Length; i++) Append((ulong)span[i], 16);
+        public void Append(IList<byte> value) {
+            for (int i = 0; i < value.Count; i++) Append((ulong)value[i], 8);
         }
 
-        public void Append(uint[] value) {
-            var span = new ReadOnlySpan<uint>(value);
-            for (int i = 0; i < value.Length; i++) Append((ulong)span[i], 32);
+        public void Append(IList<ushort> value) {
+            for (int i = 0; i < value.Count; i++) Append((ulong)value[i], 16);
         }
-        public void Append(int[] value) {
-            var span = new ReadOnlySpan<int>(value);
-            for (int i = 0; i < value.Length; i++) Append((ulong)span[i], 32);
+        public void Append(IList<short> value) {
+            for (int i = 0; i < value.Count; i++) Append((ulong)value[i], 16);
+        }
+        public void Append(IList<char> value) {
+            for (int i = 0; i < value.Count; i++) Append((ulong)value[i], 16);
         }
 
-        public void Append(ulong[] value) {
-            var span = new ReadOnlySpan<ulong>(value);
-            for (int i = 0; i < value.Length; i++) Append((ulong)span[i], 64);
+        public void Append(IList<uint> value) {
+            for (int i = 0; i < value.Count; i++) Append((ulong)value[i], 32);
         }
-        public void Append(long[] value) {
-            var span = new ReadOnlySpan<long>(value);
-            for (int i = 0; i < value.Length; i++) Append((ulong)span[i], 64);
+        public void Append(IList<int> value) {
+            for (int i = 0; i < value.Count; i++) Append((ulong)value[i], 32);
         }
-        public void Append(string[] value) {
-            var span = new ReadOnlySpan<string>(value);
-            for (int i = 0; i < value.Length; i++) Append(span[i]);
+
+        public void Append(IList<ulong> value) {
+            for (int i = 0; i < value.Count; i++) Append((ulong)value[i], 64);
+        }
+        public void Append(IList<long> value) {
+            for (int i = 0; i < value.Count; i++) Append((ulong)value[i], 64);
+        }
+        public void Append(IList<string> value) {
+            for (int i = 0; i < value.Count; i++) Append(value[i]);
         }
 
         void Append(ulong value, byte length) {

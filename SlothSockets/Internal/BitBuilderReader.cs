@@ -19,9 +19,9 @@ namespace SlothSockets.Internal
             Bits = bits;
         }
 
-        void CheckCanReadAmount(byte length)
+        void CheckCanReadAmount(long length)
         {
-            if (Position + length > Bits.TotalLength) throw new ArgumentOutOfRangeException($"End of {nameof(BitBuilder)} reached.");
+            if (Position + length > Bits.TotalLength) throw new Exception($"End of {nameof(BitBuilder)} reached.");
         }
 
         (byte XPos, int YPos) GetCoordinates() => ((byte)(Position % 64), (int)Position / 64);
@@ -47,6 +47,11 @@ namespace SlothSockets.Internal
         public ulong ReadULong() => (ulong)Read(64);
         public long ReadLong() => (long)Read(64);
 
+        public DateTime ReadDateTime() => new((long)Read(64), (DateTimeKind)Read(32));
+        public TimeSpan ReadTimeSpan() => TimeSpan.FromTicks((long)Read(64));
+
+        public decimal ReadDecimal() => new(ReadArray<int>(32, 4));
+
         public string ReadString() {
             var length = ReadInt();
             var sb = new StringBuilder();
@@ -54,7 +59,38 @@ namespace SlothSockets.Internal
             return sb.ToString();
         }
 
-        public ulong Read(byte length)
+        public sbyte[] ReadSBytes(long count) => ReadArray<sbyte>(8, count);
+        public byte[] ReadBytes(long count) => ReadArray<byte>(8, count);
+
+        public ushort[] ReadUShorts(long count) => ReadArray<ushort>(16, count);
+        public short[] ReadShorts(long count) => ReadArray<short>(16, count);
+        public char[] ReadChars(long count) => ReadArray<char>(16, count);
+
+        public uint[] ReadUInts(long count) => ReadArray<uint>(32, count);
+        public int[] ReadInts(long count) => ReadArray<int>(32, count);
+
+        public ulong[] ReadULongs(long count) => ReadArray<ulong>(64, count);
+        public long[] ReadLongs(long count) => ReadArray<long>(64, count);
+
+        public string[] ReadStrings(long count) {
+            var result = new string[count];
+            for (long i = 0; i < count; i++) result[i] = ReadString();
+            return result;
+        }
+
+        T[] ReadArray<T>(byte length, long count)
+        {
+            CheckCanReadAmount(length * count);
+            var result = new T[count];
+
+            // Todo: speedup here with a more complex re-implementation --
+            for (long i = 0; i < count; i++) result[i] = (T)(object)Read(length);
+            // --
+
+            return result;
+        }
+
+        ulong Read(byte length)
         {
             CheckCanReadAmount(length);
             var (x_pos, y_pos) = GetCoordinates();
@@ -70,6 +106,5 @@ namespace SlothSockets.Internal
                 return result;
             }
         }
-
     }
 }
