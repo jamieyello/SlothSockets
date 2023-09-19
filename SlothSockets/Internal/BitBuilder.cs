@@ -109,6 +109,7 @@ namespace SlothSockets.Internal
 
         public void Append(decimal value) => Append(decimal.GetBits(value));
 
+        /// <param name="value"></param>
         public void Append(string value) {
             Append(value.Length);
             for (int i = 0; i < value.Length; i++) Append(value[i]);

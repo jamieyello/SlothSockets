@@ -20,7 +20,7 @@ namespace SlothSockets.Internal
 
         /// <summary> A primitive type is a type with no underlying fields, like a bool int or string. </summary>
         internal static bool IsPrimitiveType(Type type) => 
-            type.IsPrimitive || type.IsValueType || (type == typeof(string));
+            type.IsPrimitive || (type == typeof(string));
 
         static readonly Dictionary<Type, FieldInfo[]> cache_GetTargetFields = new();
         internal static FieldInfo[] GetTargetFields(Type type, SerializeMode mode) {
@@ -58,6 +58,7 @@ namespace SlothSockets.Internal
             else {
                 var t = GetTargetFields(type, default_mode);
 
+                // Todo: treat ICollection as arrays
                 if (type.IsArray) { throw new NotImplementedException(); }
 
                 builder.Append(new ObjectSerialationFlags() { IsNull = false, IsArray = type.IsArray });
