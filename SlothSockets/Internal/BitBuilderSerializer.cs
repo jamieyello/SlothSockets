@@ -18,6 +18,7 @@ namespace SlothSockets.Internal
             return result;
         }
 
+        /// <summary> A primitive type is a type with no underlying fields, like a bool int or string. </summary>
         internal static bool IsPrimitiveType(Type type) => 
             type.IsPrimitive || type.IsValueType || (type == typeof(string));
 
@@ -25,7 +26,7 @@ namespace SlothSockets.Internal
         internal static FieldInfo[] GetTargetFields(Type type, SerializeMode mode) {
             if ((mode & SerializeMode.Fields) == 0) return Array.Empty<FieldInfo>();
             if (cache_GetTargetFields.TryGetValue(type, out var result)) return result;
-            result = type.GetFields(BindingFlags.Instance).OrderBy(field => field.MetadataToken).ToArray();
+            result = type.GetFields(BindingFlags.Instance | BindingFlags.Public).OrderBy(field => field.MetadataToken).ToArray();
             cache_GetTargetFields.Add(type, result);
             return result;
         }
@@ -40,8 +41,9 @@ namespace SlothSockets.Internal
         /// <summary> Serialize object to <see cref="BitBuilder"/>. </summary>
         /// <exception cref="NotImplementedException"> Thrown if a type in the object is not supported. </exception>
         internal static void Serialize(object? obj, BitBuilder builder, SerializeMode default_mode) {
+
             if (obj == null) {
-                builder.Append(new ObjectSerialationFlags() { IsNull = true }); ;
+                builder.Append(new ObjectSerialationFlags() { IsNull = true });
                 return;
             }
 
@@ -54,10 +56,40 @@ namespace SlothSockets.Internal
                 builder.AppendBaseTypeObject(obj);
             }
             else {
-                builder.Append(new ObjectSerialationFlags() { IsNull = false }); ;
+                var t = GetTargetFields(type, default_mode);
+
+                if (type.IsArray) { throw new NotImplementedException(); }
+
+                builder.Append(new ObjectSerialationFlags() { IsNull = false, IsArray = type.IsArray });
                 foreach (var field in GetTargetFields(type, default_mode)) {
+                    // reflection slow?
                     Serialize(field.GetValue(obj), builder, default_mode);
                 }
+            }
+        }
+
+        internal static object? DeSerialize(Type type, BitBuilderReader reader, SerializeMode default_mode) {
+            var attribute = GetSerializeAttribute(type);
+            var mode = attribute?.Mode ?? default_mode;
+
+            if (IsPrimitiveType(type)) {
+                if (!reader.IsSupportedType(type)) throw new NotImplementedException($"Type must by implemented in {nameof(BitBuilder)}.");
+                return reader.Read(type);
+            }
+            else
+            {
+                var flags = reader.ReadObjectSerializationFlags();
+                if (flags.IsNull) return default;
+                if (flags.IsArray) { throw new NotImplementedException(); }
+
+                var obj = Activator.CreateInstance(type) 
+                    ?? throw new Exception($"Failed to create instance of {type.FullName}");
+                foreach (var field in GetTargetFields(type, default_mode))
+                {
+                    // reflection slow?
+                    field.SetValue(obj, DeSerialize(field.FieldType, reader, default_mode));
+                }
+                return obj;
             }
         }
     }

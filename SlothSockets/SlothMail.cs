@@ -11,6 +11,7 @@ namespace SlothSockets
     public class SlothMail
     {
         BitBuilder data;
+        SerializeMode mode;
 
         public SlothMail()
         {
@@ -19,7 +20,7 @@ namespace SlothSockets
 
         public SlothMail(object obj, SerializeMode mode = SerializeMode.Fields)
         {
-            
+            this.mode = mode;
         }
     }
 }

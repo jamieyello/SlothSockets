@@ -54,10 +54,30 @@ namespace SlothSockets.Tests
             Assert.AreEqual(message, s);
         }
 
-        [TestMethod]
-        public void CastTest()
+        class TestClass
         {
+            public ulong test1;
+            public ulong test2;
+            public ulong test3;
+            public ulong test4;
+            public string test_string;
+        }
 
+        [TestMethod]
+        public void SerializeTest()
+        {
+            var bb = new BitBuilder();
+            bb.Append(new TestClass() { 
+                test1 = 1,
+                test2 = 2,
+                test3 = 3,
+                test4 = 4,
+                test_string = "wowow"
+            }, SerializeMode.Fields);
+            bb.WriteDebug();
+
+            var reader = bb.GetReader();
+            var res = reader.Read<TestClass>();
         }
     }
 }

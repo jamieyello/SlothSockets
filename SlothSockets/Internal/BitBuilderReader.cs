@@ -7,17 +7,74 @@ using System.Threading.Tasks;
 namespace SlothSockets.Internal
 {
     /// <summary> Reads data from a <see cref="BitBuilder"/>. Created from <see cref="BitBuilder.GetReader"/>. </summary>
-    /// <remarks> Starts from the beginning. Each reader created keeps its own independent position. </remarks>
+    /// <remarks> Starts from the beginning. Each reader created keeps its own independent position. 
+    /// TODO: Too low level for public use.
+    /// </remarks>
     public class BitBuilderReader
     {
         public BitBuilder Bits { get; private set; }
         
         public long Position { get; set; }
 
+        readonly Dictionary<Type, Func<long, object>> read_methods;
+
         internal BitBuilderReader(BitBuilder bits)
         {
             Bits = bits;
+
+            read_methods = new() {
+                { typeof(bool), (c) => ReadBool() },
+                { typeof(sbyte), (c) => ReadSByte() },
+                { typeof(byte), (c) => ReadByte() },
+                { typeof(ushort), (c) => ReadUShort() },
+                { typeof(short), (c) => ReadShort() },
+                { typeof(char), (c) => ReadChar() },
+                { typeof(decimal), (c) => ReadDecimal() },
+                { typeof(uint), (c) => ReadUInt() },
+                { typeof(int), (c) => ReadInt() },
+                { typeof(ulong), (c) => ReadULong() },
+                { typeof(long), (c) => ReadLong() },
+                { typeof(DateTime), (c) => ReadDateTime() },
+                { typeof(TimeSpan), (c) => ReadTimeSpan() },
+                { typeof(string), (c) => ReadString() },
+
+                { typeof(bool[]), ReadBools },
+                { typeof(sbyte[]), ReadSBytes },
+                { typeof(byte[]), ReadBytes },
+                { typeof(ushort[]), ReadUShorts },
+                { typeof(short[]), ReadShorts },
+                { typeof(char[]), ReadChars },
+                { typeof(decimal[]), ReadDecimals },
+                { typeof(uint[]), ReadUInts },
+                { typeof(int[]), ReadInts },
+                { typeof(ulong[]), ReadULongs },
+                { typeof(long[]), ReadLongs },
+                { typeof(DateTime[]), ReadDateTimes },
+                { typeof(TimeSpan[]), ReadTimeSpans },
+                { typeof(string[]), ReadStrings },
+
+                // unneeded
+                //{ typeof(ObjectSerialationFlags), () => ReadObjectSerializationFlags() },
+            };
         }
+
+        // Debatable whether this should be here or not. (High level method in low level class)
+        public T? Read<T>(SerializeMode mode = SerializeMode.Fields)
+        {
+            return (T?)BitBuilderSerializer.DeSerialize(typeof(T), this, mode);
+        }
+
+        internal object Read(Type type, long? array_length = 0)
+        {
+            if (read_methods.TryGetValue(type, out var method))
+            {
+                return method.Invoke(array_length ?? 0);
+            }
+            else throw new NotImplementedException();
+        }
+
+        internal bool IsSupportedType(Type type) =>
+            read_methods.ContainsKey(type);
 
         void CheckCanReadAmount(long length)
         {
@@ -59,6 +116,8 @@ namespace SlothSockets.Internal
             return sb.ToString();
         }
 
+        public bool[] ReadBools(long count) => ReadArray<bool>(1, count);
+
         public sbyte[] ReadSBytes(long count) => ReadArray<sbyte>(8, count);
         public byte[] ReadBytes(long count) => ReadArray<byte>(8, count);
 
@@ -71,6 +130,27 @@ namespace SlothSockets.Internal
 
         public ulong[] ReadULongs(long count) => ReadArray<ulong>(64, count);
         public long[] ReadLongs(long count) => ReadArray<long>(64, count);
+
+        public DateTime[] ReadDateTimes(long count)
+        {
+            var result = new DateTime[count];
+            for (long i = 0; i < count; i++) result[i] = ReadDateTime();
+            return result;
+        }
+
+        public TimeSpan[] ReadTimeSpans(long count)
+        {
+            var result = new TimeSpan[count];
+            for (long i = 0; i < count; i++) result[i] = ReadTimeSpan();
+            return result;
+        }
+
+        public decimal[] ReadDecimals(long count)
+        {
+            var result = new decimal[count];
+            for (long i = 0; i < count; i++) result[i] = ReadDecimal();
+            return result;
+        }
 
         public string[] ReadStrings(long count) {
             var result = new string[count];
@@ -88,6 +168,15 @@ namespace SlothSockets.Internal
             // --
 
             return result;
+        }
+
+        internal ObjectSerialationFlags ReadObjectSerializationFlags()
+        {
+            var flags = new ObjectSerialationFlags();
+            flags.IsNull = ReadBool();
+            flags.IsArray = ReadBool();
+            if (flags.IsArray && !flags.IsNull) flags.ArrayLength = ReadLong();
+            return flags;
         }
 
         ulong Read(byte length)

@@ -37,7 +37,8 @@ namespace SlothSockets.Internal
             typeof(ObjectSerialationFlags),
         };
 
-        internal static bool IsBaseSupportedType(Type type) => base_types.Contains(type);
+        internal static bool IsBaseSupportedType(Type type) => 
+            base_types.Contains(type);
 
         public void WriteDebug() {
             foreach (var ul in Bits) Console.WriteLine(Convert.ToString((long)ul, 2).PadLeft(64, '0'));
@@ -45,25 +46,30 @@ namespace SlothSockets.Internal
 
         public BitBuilderReader GetReader() => new(this);
 
+        // This may actually be too complicated in terms of code design, grabs all methods named "Append" (overthinking, just use Dictionary)
         static MethodInfo[] GetPublicAppendMethods()
         {
             List<MethodInfo> result = new();
 
-            var append_methods = typeof(BitBuilder).GetMethods(BindingFlags.Public)
+            var append_methods = typeof(BitBuilder).GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .Where(method => method.Name == "Append");
 
             foreach (var append_method in append_methods)
             {
                 var parameters = append_method.GetParameters();
                 if (parameters.Length != 1) continue;
+                result.Add(append_method);
             }
 
-            throw new NotImplementedException();
+            return result.ToArray();
         }
         static internal Dictionary<Type, FastMethodInfo> cache_AppendPrimative = new();
         internal void AppendBaseTypeObject(object obj)
         {
-            if (cache_AppendPrimative.TryGetValue(obj.GetType(), out var method)) method.Invoke(this, obj);
+            if (cache_AppendPrimative.TryGetValue(obj.GetType(), out var method)) {
+                method.Invoke(this, obj);
+                return;
+            }
             MethodInfo target = GetPublicAppendMethods()
                 .Where(method => method.GetParameters()[0].ParameterType == obj.GetType())
                 .FirstOrDefault() ?? throw new Exception("Object is not a base supported type.");
@@ -111,9 +117,12 @@ namespace SlothSockets.Internal
         internal void Append(ObjectSerialationFlags object_flags)
         {
             Append(object_flags.IsNull);
+            Append(object_flags.IsArray);
+            if (object_flags.IsArray && !object_flags.IsNull) Append(object_flags.ArrayLength);
         }
 
-        internal void Append(object obj, SerializeMode mode = SerializeMode.Properties) => BitBuilderSerializer.Serialize(obj, this, mode);
+        public void Append(object obj, SerializeMode mode = SerializeMode.Properties) => 
+            BitBuilderSerializer.Serialize(obj, this, mode);
 
         public void Append(IList<bool> value) {
             for (int i = 0; i < value.Count; i++) Append(value[i]);
