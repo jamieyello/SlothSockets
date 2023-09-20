@@ -85,6 +85,8 @@ namespace SlothSockets.Internal
 
         public bool ReadBool()
         {
+            return Read(1) > 0;
+            // the following is broken
             CheckCanReadAmount(1);
             var (x_pos, y_pos) = GetCoordinates();
             Position++;
@@ -174,8 +176,12 @@ namespace SlothSockets.Internal
         {
             var flags = new ObjectSerialationFlags();
             flags.IsNull = ReadBool();
+            if (flags.IsNull) return flags;
+            flags.IsICollection = ReadBool();
+            if (flags.IsICollection) flags.Length = ReadLong();
             flags.IsArray = ReadBool();
-            if (flags.IsArray && !flags.IsNull) flags.ArrayLength = ReadLong();
+            if (flags.IsArray) flags.ArrayDimensionCount = ReadUShort();
+            if (flags.IsArray) flags.ArrayLengths = ReadLongs(flags.ArrayDimensionCount);
             return flags;
         }
 

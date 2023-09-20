@@ -6,13 +6,15 @@ using System.Threading.Tasks;
 
 namespace SlothSockets.Internal
 {
-    // 0 - IsNull
-    // 0 - IsArray
-    // 000000000000000000000000000000000000000000000000000000000000000000000000 - Length (only included if IsArray && !IsNull)
+    /// <summary> A special object that is prepended in front of serialized classes and structs in <see cref="BitBuilderSerializer"/>. Used to help de-serialization. </summary>
+    /// <remarks> See <see cref="BitBuilder.Append(ObjectSerialationFlags)"/> and <see cref="BitBuilderReader.ReadObjectSerializationFlags"/> to see exactly how this is serialized. All mentioned methods must be modified if this structure is. </remarks>
     internal struct ObjectSerialationFlags
     {
         public bool IsNull;
+        public bool IsICollection;
+        public long Length;
         public bool IsArray;
-        public long ArrayLength;
+        public ushort ArrayDimensionCount;
+        public long[] ArrayLengths;
     }
 }

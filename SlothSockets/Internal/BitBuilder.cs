@@ -40,9 +40,15 @@ namespace SlothSockets.Internal
         internal static bool IsBaseSupportedType(Type type) => 
             base_types.Contains(type);
 
-        public void WriteDebug() {
-            foreach (var ul in Bits) Console.WriteLine(Convert.ToString((long)ul, 2).PadLeft(64, '0'));
+        public string DebugString { get
+            {
+                var sb = new StringBuilder();
+                foreach (var ul in Bits) sb.AppendLine(Convert.ToString((long)ul, 2).PadLeft(64, '0'));
+                return sb.ToString();
+            }
         }
+
+        public void WriteDebug() => Console.WriteLine(DebugString);
 
         public BitBuilderReader GetReader() => new(this);
 
@@ -118,8 +124,12 @@ namespace SlothSockets.Internal
         internal void Append(ObjectSerialationFlags object_flags)
         {
             Append(object_flags.IsNull);
+            if (object_flags.IsNull) return;
+            Append(object_flags.IsICollection);
+            if (object_flags.IsICollection) Append(object_flags.Length);
             Append(object_flags.IsArray);
-            if (object_flags.IsArray && !object_flags.IsNull) Append(object_flags.ArrayLength);
+            if (object_flags.IsArray) Append(object_flags.ArrayDimensionCount);
+            if (object_flags.IsArray) Append(object_flags.ArrayLengths);
         }
 
         public void Append(object obj, SerializeMode mode = SerializeMode.Properties) => 
