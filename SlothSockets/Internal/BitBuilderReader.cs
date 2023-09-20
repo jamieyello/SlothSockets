@@ -166,8 +166,16 @@ namespace SlothSockets.Internal
             var result = new T[count];
 
             // Todo: speedup here with a more complex re-implementation --
-            for (long i = 0; i < count; i++) result[i] = (T)(object)Read(length);
+            if (typeof(T) == typeof(long)) {
+                // Compiler is dumb with safety checks (specifically ulong to long)
+                for (long i = 0; i < count; i++) result[i] = (T)(object)(long)Read(length);
+            }
+            else
+            {
+                for (long i = 0; i < count; i++) result[i] = (T)(object)Read(length);
+            }
             // --
+
 
             return result;
         }

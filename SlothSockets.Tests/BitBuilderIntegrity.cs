@@ -75,14 +75,15 @@ namespace SlothSockets.Tests
 
         class TestClass2
         {
-            //public ulong test_value;
+            public ulong test_value;
             public ulong[] test_array;
-            //public string test_string;
+            //public ulong[,] test_array2;
+            public string test_string;
 
             public bool Matches(TestClass2 t) =>
-                //test_value == t.test_value &&
-                test_array.SequenceEqual(t.test_array) /*&&*/
-                /*test_string == t.test_string*/;
+                test_value == t.test_value &&
+                test_array.SequenceEqual(t.test_array) &&
+                test_string == t.test_string;
         }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         #endregion
@@ -116,8 +117,9 @@ namespace SlothSockets.Tests
             var original = new TestClass2()
             {
                 test_array = new ulong[] { 1, 2, 3 },
-                //test_string = "wowowow",
-                //test_value = 3
+                //test_array2 = new ulong[,] { { 1, 2, 3 }, { 4, 5, 6 } },
+                test_string = "wowowow",
+                test_value = 3
             };
             bb.Append(original, SerializeMode.Fields);
             bb.WriteDebug();
