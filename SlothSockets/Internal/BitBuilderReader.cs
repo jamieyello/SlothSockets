@@ -85,7 +85,8 @@ namespace SlothSockets.Internal
 
         public bool ReadBool()
         {
-            return Read(1) > 0;
+            var r = (Read(1) & 1);
+            return r > 0;
             // the following is broken
             CheckCanReadAmount(1);
             var (x_pos, y_pos) = GetCoordinates();
@@ -201,9 +202,14 @@ namespace SlothSockets.Internal
 
             var remainder = 64 - length;
 
-            if (x_pos <= remainder) return Bits.Bits[y_pos] >> remainder - x_pos;
+            if (x_pos <= remainder)
+            {
+                var r = Bits.Bits[y_pos] >> remainder - x_pos;
+                return r;
+            }
             else if (x_pos == remainder) return Bits.Bits[y_pos];
-            else {
+            else
+            {
                 var result = Bits.Bits[y_pos] << x_pos - remainder;
                 result |= Bits.Bits[y_pos + 1] >> 64 - (x_pos + length) % 64;
                 return result;
