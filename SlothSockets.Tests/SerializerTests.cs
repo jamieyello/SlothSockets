@@ -22,10 +22,10 @@ namespace SlothSockets.Tests
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         struct TestClass1
         {
-            public ulong test1;
-            public ulong test2;
+            //public ulong test1;
+            //public ulong test2;
             public ulong test3;
-            public ulong test4;
+            //public ulong test4;
             public string test_string;
         }
 
@@ -46,6 +46,10 @@ namespace SlothSockets.Tests
         {
             public ulong test_value1;
             public ulong[] test_values;
+
+            public bool Matches(TestClass3 v) =>
+                test_value1 == v.test_value1 &&
+                ((test_values == null && v.test_values == null) || test_values.SequenceEqual(v.test_values));
         }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         #endregion
@@ -59,11 +63,11 @@ namespace SlothSockets.Tests
             var bb = new BitBuilder();
             var original = new TestClass1()
             {
-                test1 = 1,
-                test2 = 2,
+                //test1 = 1,
+                //test2 = 2,
                 test3 = 3,
-                test4 = 4,
-                test_string = null
+                //test4 = 4,
+                //test_string = "wowowow",
             };
             bb.Append(original, SerializeMode.Fields);
             bb.WriteDebug();
@@ -106,7 +110,7 @@ namespace SlothSockets.Tests
 
             var read = bb.GetReader().Read<TestClass3>()
                 ?? throw new Exception("Read null.");
-            //Assert.IsTrue(original.Matches(read));
+            Assert.IsTrue(original.Matches(read));
         }
     }
 }

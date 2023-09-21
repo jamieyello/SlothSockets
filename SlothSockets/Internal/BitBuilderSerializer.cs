@@ -96,7 +96,13 @@ namespace SlothSockets.Internal
             var attribute = GetSerializeAttribute(type);
             var mode = attribute?.Mode ?? default_mode;
 
-            if (IsPrimitiveType(type)) {
+            if (type == typeof(string)) // strings were a mistake
+            {
+                var flags = reader.ReadObjectSerializationFlags();
+                if (flags.IsNull) return default;
+                return reader.Read(type);
+            }
+            else if (IsPrimitiveType(type)) {
                 if (!reader.IsSupportedType(type)) throw new NotImplementedException($"Type must by implemented in {nameof(BitBuilder)}.");
                 return reader.Read(type);
             }
