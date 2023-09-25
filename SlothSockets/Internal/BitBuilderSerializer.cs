@@ -35,7 +35,7 @@ namespace SlothSockets.Internal
             // Some exceptions need to be made for commonly used structs with private readonly fields.
             // This is consistent with how JsonConvert works.
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>)) {
-                binding_flags |= BindingFlags.NonPublic;
+                binding_flags = BindingFlags.Instance | BindingFlags.NonPublic;
             }
 
             result = type.GetFields(binding_flags).OrderBy(field => field.MetadataToken).ToArray();
@@ -51,15 +51,15 @@ namespace SlothSockets.Internal
             return result;
         }
 
-        static readonly Dictionary<Type, (FastMethodInfo Method, Type[] ParamTypes, Type? KvpType)> cache_GetAddMethod = new();
-        public static (FastMethodInfo Method, Type[] ParamTypes, Type? KeyValuePairType) GetAddMethod(Type type)
+        static readonly Dictionary<Type, (FastMethodInfo Method, Type ParamType)> cache_GetAddMethod = new();
+        /// <summary> Get the <see cref="ICollection{T}.Add(T)"/> method. </summary>
+        public static (FastMethodInfo Method, Type ParamType) GetAddMethod(Type type)
         {
             if (cache_GetAddMethod.TryGetValue(type, out var add_method)) return add_method;
-            var method = type.GetMethods().Where(x => x.Name == "Add").FirstOrDefault() ?? throw new Exception($"Failed to get add method from type {type}");
+            var method = type.GetInterface("ICollection`1")?.GetMethod("Add") ?? throw new Exception($"Failed to get add method from type {type}");
             var result_method = new FastMethodInfo(method);
-            var @params = method.GetParameters().Select(x => x.ParameterType).ToArray();
-            var kvp_t = @params.Length == 2 ? typeof(KeyValuePair<,>).MakeGenericType(@params) : null;
-            var result = (result_method, @params, kvp_t);
+            var param_type = method.GetParameters().Single().ParameterType;
+            var result = (result_method, param_type);
             cache_GetAddMethod.Add(type, result);
             return result;
         }
@@ -145,6 +145,7 @@ namespace SlothSockets.Internal
                         var indices = new long[array_rank];
 
                         do {
+                            // reflection slow
                             a_obj.SetValue(DeSerialize(element_type, reader, default_mode), indices);
                         } while (IncrementArray(indices, flags.ArrayLengths));
 
@@ -156,23 +157,7 @@ namespace SlothSockets.Internal
                             ?? throw new Exception($"Failed to create instance of {type.FullName}");
 
                         var add_method = GetAddMethod(type);
-
-                        if (add_method.ParamTypes.Length == 1)
-                        {
-                            for (long i = 0; i < flags.Length; i++) add_method.Method.Invoke(obj, DeSerialize(add_method.ParamTypes[0], reader, default_mode));
-                        }
-                        else if (add_method.ParamTypes.Length == 2) // dictionaries don't fully implement the ICollection<T> interface?? It doesn't have an Add(T) method. Dictionary is assumed here
-                        {
-                            for (long i = 0; i < flags.Length; i++)
-                            {
-                                // Extremely slow, for now
-                                var add = DeSerialize(add_method.KeyValuePairType, reader, default_mode);
-                                var k_field = add_method.KeyValuePairType.GetField("key", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(add);
-                                var v_field = add_method.KeyValuePairType.GetField("value", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(add);
-
-                                add_method.Method.Invoke(obj, k_field, v_field);
-                            }
-                        }
+                        for (long i = 0; i < flags.Length; i++) add_method.Method.Invoke(obj, DeSerialize(add_method.ParamType, reader, default_mode));
                         return obj;
                     }
                 }
@@ -182,7 +167,7 @@ namespace SlothSockets.Internal
                         ?? throw new Exception($"Failed to create instance of {type.FullName}");
                     foreach (var field in GetTargetFields(type, default_mode))
                     {
-                        // reflection slow?
+                        // reflection slow
                         field.SetValue(obj, DeSerialize(field.FieldType, reader, default_mode));
                     }
                     return obj;
