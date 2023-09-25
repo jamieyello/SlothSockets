@@ -38,6 +38,19 @@ namespace SlothSockets.Internal
         public static object? GetDefault(Type type) {
             if (cache_GetDefault.TryGetValue(type, out var @default)) return @default;
             var result = type.IsValueType ? Activator.CreateInstance(type) : null;
+            cache_GetDefault.Add(type, result);
+            return result;
+        }
+
+        static readonly Dictionary<Type, (FastMethodInfo Method, Type ParamType)> cache_GetAddMethod = new();
+        public static (FastMethodInfo Method, Type ParamType) GetAddMethod(Type type)
+        {
+            if ( cache_GetAddMethod.TryGetValue(type, out var add_method)) return add_method;
+            var method = type.GetMethod("Add") ?? throw new Exception($"Failed to get add method from type {type}");
+            var result_method = new FastMethodInfo(method);
+            var result_param_type = method.GetParameters().Single().ParameterType;
+            var result = (result_method, result_param_type);
+            cache_GetAddMethod.Add(type, result);
             return result;
         }
 
@@ -56,6 +69,7 @@ namespace SlothSockets.Internal
 
             if (IsPrimitiveType(type)) {
                 if (!BitBuilder.IsBaseSupportedType(type)) throw new NotImplementedException($"Type must by implemented in {nameof(BitBuilder)}.");
+                if (type == typeof(string)) builder.Append(new ObjectSerialationFlags());
                 builder.AppendBaseTypeObject(obj);
             }
             else {
@@ -128,7 +142,13 @@ namespace SlothSockets.Internal
                     }
                     else
                     {
-                        throw new NotImplementedException();
+                        var obj = Activator.CreateInstance(type)
+                            ?? throw new Exception($"Failed to create instance of {type.FullName}");
+
+                        var add_method = GetAddMethod(type);
+
+                        for (long i = 0; i < flags.Length; i++) add_method.Method.Invoke(obj, DeSerialize(add_method.ParamType, reader, default_mode));
+                        return obj;
                     }
                 }
                 else

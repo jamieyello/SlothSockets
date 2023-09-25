@@ -64,15 +64,11 @@ namespace SlothSockets.Internal
             return (T?)BitBuilderSerializer.DeSerialize(typeof(T), this, mode);
         }
 
-        internal object Read(Type type, long? array_length = 0)
-        {
-            if (read_methods.TryGetValue(type, out var method))
-            {
-                return method.Invoke(array_length ?? 0);
-            }
-            else throw new NotImplementedException();
-        }
-
+        internal object Read(Type type, long? array_length = 0) =>
+            read_methods.TryGetValue(type, out var method) ?
+                method.Invoke(array_length ?? 0) : 
+                throw new NotImplementedException();
+        
         internal bool IsSupportedType(Type type) =>
             read_methods.ContainsKey(type);
 
@@ -85,8 +81,9 @@ namespace SlothSockets.Internal
 
         public bool ReadBool()
         {
-            var r = (Read(1) & 1);
-            return r > 0;
+            var read = Read(1);
+            var result = (read & 1);
+            return result > 0;
             // the following is broken
             CheckCanReadAmount(1);
             var (x_pos, y_pos) = GetCoordinates();
