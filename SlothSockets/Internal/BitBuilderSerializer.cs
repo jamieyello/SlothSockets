@@ -29,7 +29,16 @@ namespace SlothSockets.Internal
         internal static FieldInfo[] GetTargetFields(Type type, SerializeMode mode) {
             if ((mode & SerializeMode.Fields) == 0) return Array.Empty<FieldInfo>();
             if (cache_GetTargetFields.TryGetValue(type, out var result)) return result;
-            result = type.GetFields(BindingFlags.Instance | BindingFlags.Public).OrderBy(field => field.MetadataToken).ToArray();
+
+            var binding_flags = BindingFlags.Instance | BindingFlags.Public;
+
+            // Some exceptions need to be made for commonly used structs with private readonly fields.
+            // This is consistent with how JsonConvert works.
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>)) {
+                binding_flags |= BindingFlags.NonPublic;
+            }
+
+            result = type.GetFields(binding_flags).OrderBy(field => field.MetadataToken).ToArray();
             cache_GetTargetFields.Add(type, result);
             return result;
         }

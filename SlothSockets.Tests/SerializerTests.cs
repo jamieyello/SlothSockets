@@ -1,4 +1,5 @@
-﻿using SlothSockets.Internal;
+﻿using Newtonsoft.Json;
+using SlothSockets.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -58,6 +59,7 @@ namespace SlothSockets.Tests
         public class TestClass4
         {
             public List<ulong> test_list;
+            public KeyValuePair<ulong, ulong> test_kvp;
         }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         #endregion
@@ -129,7 +131,8 @@ namespace SlothSockets.Tests
             var bb = new BitBuilder();
             var original = new TestClass4()
             {
-                test_list = new() { 1, 2, 4, 5 }
+                test_list = new() { 1, 2, 4, 5 },
+                test_kvp = new(8, 7)
             };
             bb.Append(original, SerializeMode.Fields);
             bb.WriteDebug();
@@ -137,6 +140,31 @@ namespace SlothSockets.Tests
             var read = bb.GetReader().Read<TestClass4>()
                 ?? throw new Exception("Read null.");
             //Assert.IsTrue(original.Matches(read));
+        }
+
+    [Serializable]
+        public struct TestReadOnly
+        {
+            private readonly int value;
+
+            public TestReadOnly()
+            {
+                
+            }
+            public TestReadOnly(int value)
+            {
+                this.value = value;
+            }
+        }
+
+        [TestMethod]
+        public void TestKVP()
+        {
+            var original = new TestReadOnly(4);
+            var json = JsonConvert.SerializeObject(original);
+
+            var kvp_original = new KeyValuePair<int, int>(2, 3);
+            var json_kvp = JsonConvert.SerializeObject(kvp_original);
         }
     }
 }
