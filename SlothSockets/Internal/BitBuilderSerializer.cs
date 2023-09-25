@@ -51,14 +51,15 @@ namespace SlothSockets.Internal
             return result;
         }
 
-        static readonly Dictionary<Type, (FastMethodInfo Method, Type ParamType)> cache_GetAddMethod = new();
-        public static (FastMethodInfo Method, Type ParamType) GetAddMethod(Type type)
+        static readonly Dictionary<Type, (FastMethodInfo Method, Type[] ParamTypes, Type? KvpType)> cache_GetAddMethod = new();
+        public static (FastMethodInfo Method, Type[] ParamTypes, Type? KeyValuePairType) GetAddMethod(Type type)
         {
-            if ( cache_GetAddMethod.TryGetValue(type, out var add_method)) return add_method;
-            var method = type.GetMethod("Add") ?? throw new Exception($"Failed to get add method from type {type}");
+            if (cache_GetAddMethod.TryGetValue(type, out var add_method)) return add_method;
+            var method = type.GetMethods().Where(x => x.Name == "Add").FirstOrDefault() ?? throw new Exception($"Failed to get add method from type {type}");
             var result_method = new FastMethodInfo(method);
-            var result_param_type = method.GetParameters().Single().ParameterType;
-            var result = (result_method, result_param_type);
+            var @params = method.GetParameters().Select(x => x.ParameterType).ToArray();
+            var kvp_t = @params.Length == 2 ? typeof(KeyValuePair<,>).MakeGenericType(@params) : null;
+            var result = (result_method, @params, kvp_t);
             cache_GetAddMethod.Add(type, result);
             return result;
         }
@@ -156,7 +157,22 @@ namespace SlothSockets.Internal
 
                         var add_method = GetAddMethod(type);
 
-                        for (long i = 0; i < flags.Length; i++) add_method.Method.Invoke(obj, DeSerialize(add_method.ParamType, reader, default_mode));
+                        if (add_method.ParamTypes.Length == 1)
+                        {
+                            for (long i = 0; i < flags.Length; i++) add_method.Method.Invoke(obj, DeSerialize(add_method.ParamTypes[0], reader, default_mode));
+                        }
+                        else if (add_method.ParamTypes.Length == 2) // dictionaries don't fully implement the ICollection<T> interface?? It doesn't have an Add(T) method. Dictionary is assumed here
+                        {
+                            for (long i = 0; i < flags.Length; i++)
+                            {
+                                // Extremely slow, for now
+                                var add = DeSerialize(add_method.KeyValuePairType, reader, default_mode);
+                                var k_field = add_method.KeyValuePairType.GetField("key", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(add);
+                                var v_field = add_method.KeyValuePairType.GetField("value", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(add);
+
+                                add_method.Method.Invoke(obj, k_field, v_field);
+                            }
+                        }
                         return obj;
                     }
                 }

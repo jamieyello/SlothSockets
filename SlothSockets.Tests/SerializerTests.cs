@@ -60,6 +60,7 @@ namespace SlothSockets.Tests
         {
             public List<ulong> test_list;
             public KeyValuePair<ulong, ulong> test_kvp;
+            public Dictionary<ulong, ulong> test_dictionary;
         }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         #endregion
@@ -132,7 +133,12 @@ namespace SlothSockets.Tests
             var original = new TestClass4()
             {
                 test_list = new() { 1, 2, 4, 5 },
-                test_kvp = new(8, 7)
+                test_kvp = new(8, 7),
+                test_dictionary = new() { 
+                    { 0, 3 },
+                    { 1, 5 },
+                    { 7, 8 },
+                }
             };
             bb.Append(original, SerializeMode.Fields);
             bb.WriteDebug();
