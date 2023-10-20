@@ -1,4 +1,5 @@
 # Under construction, do not use yet.
+It's worth noting that most C# game engines have built-in networking that will likely serve you better.
 
 # SlothSockets
 
