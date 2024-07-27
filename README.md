@@ -1,3 +1,6 @@
+# DEPRECIATED
+Development of these libraries has been moved to [this repo](https://github.com/jamieyello/NoDb).
+
 # Under construction, do not use yet.
 It's worth noting that most C# game engines have built-in networking that will likely serve you better.
 
